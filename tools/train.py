@@ -3,14 +3,10 @@ import json
 import os
 import sys
 
-from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning, NumbaWarning
-import warnings
-warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
-warnings.simplefilter('ignore', category=NumbaWarning)
-
 import numpy as np
 import torch
 import yaml
+from det3d import __version__
 from det3d.datasets import build_dataset
 from det3d.models import build_detector
 from det3d.torchie import Config
@@ -118,7 +114,7 @@ def main():
         # save det3d version, config file content and class names in
         # checkpoints as meta data
         cfg.checkpoint_config.meta = dict(
-            config=cfg.text, CLASSES=datasets[0].CLASSES
+            det3d_version=__version__, config=cfg.text, CLASSES=datasets[0].CLASSES
         )
 
     # add an attribute for visualization convenience

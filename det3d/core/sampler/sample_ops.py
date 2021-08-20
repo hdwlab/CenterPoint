@@ -173,14 +173,42 @@ class DataBaseSamplerV2:
         if len(sampled) > 0:
             sampled_gt_boxes = np.concatenate(sampled_gt_boxes, axis=0)
 
+            if road_planes is not None:
+                # Only support KITTI
+                # image plane
+                assert False, "Not correct yet!"
+                a, b, c, d = road_planes
+
+                center = sampled_gt_boxes[:, :3]
+                center[:, 2] -= sampled_gt_boxes[:, 5] / 2
+                center_cam = box_np_ops.lidar_to_camera(
+                    center, calib["rect"], calib["Trv2c"])
+
+                cur_height_cam = (-d - a *
+                                  center_cam[:, 0] - c * center_cam[:, 2]) / b
+                center_cam[:, 1] = cur_height_cam
+                lidar_tmp_point = box_np_ops.camera_to_lidar(
+                    center_cam, calib["rect"], calib["Trv2c"])
+                cur_lidar_height = lidar_tmp_point[:, 2]
+
+                # botom to middle center
+                # kitti [0.5, 0.5, 0] center to [0.5, 0.5, 0.5]
+                sampled_gt_boxes[:, 2] = cur_lidar_height + \
+                    sampled_gt_boxes[:, 5] / 2
+
+                # mv_height = sampled_gt_boxes[:, 2] - cur_lidar_height
+                # sampled_gt_boxes[:, 2] -= mv_height
+
             num_sampled = len(sampled)
             s_points_list = []
             for info in sampled:
                 try:
+                    # TODO fix point read error
                     s_points = np.fromfile(
                         str(pathlib.Path(root_path) / info["path"]), dtype=np.float32
                     ).reshape(-1, num_point_features)
-
+                    # if not add_rgb_to_points:
+                    #     s_points = s_points[:, :4]
                     if "rot_transform" in info:
                         rot = info["rot_transform"]
                         s_points[:, :3] = box_np_ops.rotation_points_single_angle(
@@ -192,31 +220,40 @@ class DataBaseSamplerV2:
                 except Exception:
                     print(str(pathlib.Path(root_path) / info["path"]))
                     continue
+            # gt_bboxes = np.stack([s["bbox"] for s in sampled], axis=0)
+            # if np.random.choice([False, True], replace=False, p=[0.3, 0.7]):
+            # do random crop.
+            random_crop = False
             if random_crop:
                 s_points_list_new = []
                 assert calib is not None
                 rect = calib["rect"]
                 Trv2c = calib["Trv2c"]
                 P2 = calib["P2"]
-                gt_bboxes = box_np_ops.box3d_to_bbox(sampled_gt_boxes, rect, Trv2c, P2)
-                crop_frustums = prep.random_crop_frustum(gt_bboxes, rect, Trv2c, P2)
+                gt_bboxes = box_np_ops.box3d_to_bbox(
+                    sampled_gt_boxes, rect, Trv2c, P2)
+                crop_frustums = prep.random_crop_frustum(
+                    gt_bboxes, rect, Trv2c, P2)
                 for i in range(crop_frustums.shape[0]):
                     s_points = s_points_list[i]
                     mask = prep.mask_points_in_corners(
-                        s_points, crop_frustums[i : i + 1]
+                        s_points, crop_frustums[i: i + 1]
                     ).reshape(-1)
                     num_remove = np.sum(mask)
                     if num_remove > 0 and (s_points.shape[0] - num_remove) > 15:
                         s_points = s_points[np.logical_not(mask)]
                     s_points_list_new.append(s_points)
                 s_points_list = s_points_list_new
-            ret = {
-                "gt_names": np.array([s["name"] for s in sampled]),
-                "difficulty": np.array([s["difficulty"] for s in sampled]),
-                "gt_boxes": sampled_gt_boxes,
-                "points": np.concatenate(s_points_list, axis=0),
-                "gt_masks": np.ones((num_sampled,), dtype=np.bool_),
-            }
+            try:
+                ret = {
+                    "gt_names": np.array([s["name"] for s in sampled]),
+                    "difficulty": np.array([s["difficulty"] for s in sampled]),
+                    "gt_boxes": sampled_gt_boxes,
+                    "points": np.concatenate(s_points_list, axis=0),
+                    "gt_masks": np.ones((num_sampled,), dtype=np.bool_),
+                }
+            except:
+                return None
             if self._use_group_sampling:
                 ret["group_ids"] = np.array([s["group_id"] for s in sampled])
             else:
@@ -269,7 +306,7 @@ class DataBaseSamplerV2:
                 boxes, None, valid_mask, 0, 0, self._global_rot_range, num_try=100
             )
 
-        sp_boxes_new = boxes[gt_boxes.shape[0] :]
+        sp_boxes_new = boxes[gt_boxes.shape[0]:]
         sp_boxes_bv = box_np_ops.center_to_corner_box2d(
             sp_boxes_new[:, 0:2], sp_boxes_new[:, 3:5], sp_boxes_new[:, -1]
         )
@@ -336,7 +373,7 @@ class DataBaseSamplerV2:
                 group_ids=group_ids,
                 num_try=100,
             )
-        sp_boxes_new = boxes[gt_boxes.shape[0] :]
+        sp_boxes_new = boxes[gt_boxes.shape[0]:]
         sp_boxes_bv = box_np_ops.center_to_corner_box2d(
             sp_boxes_new[:, 0:2], sp_boxes_new[:, 3:5], sp_boxes_new[:, -1]
         )
@@ -348,9 +385,9 @@ class DataBaseSamplerV2:
         valid_samples = []
         idx = num_gt
         for num in group_num:
-            if coll_mat[idx : idx + num].any():
-                coll_mat[idx : idx + num] = False
-                coll_mat[:, idx : idx + num] = False
+            if coll_mat[idx: idx + num].any():
+                coll_mat[idx: idx + num] = False
+                coll_mat[:, idx: idx + num] = False
             else:
                 for i in range(num):
                     if self._enable_global_rot:
