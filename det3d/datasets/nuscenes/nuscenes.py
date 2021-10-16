@@ -91,8 +91,8 @@ class NuScenesDataset(PointCloudDataset):
             self._nusc_infos = []
 
             frac = 1.0 / len(self._class_names)
-            import pdb
-            pdb.set_trace()
+            # import pdb
+            # pdb.set_trace()
             ratios = [frac / v for v in _cls_dist.values()]
 
             for cls_infos, ratio in zip(list(_cls_infos.values()), ratios):

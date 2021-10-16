@@ -202,21 +202,11 @@ class DataBaseSamplerV2:
             num_sampled = len(sampled)
             s_points_list = []
             for info in sampled:
-                from pypcd import pypcd
-                pc = pypcd.PointCloud.from_path(
-                    str(pathlib.Path(root_path) / info["path"]))
-                s_points = np.array([np.array(list(x)+[0.0])
-                                     for x in pc.pc_data]).reshape(-1, num_point_features)
                 try:
                     # TODO fix point read error
-                    # print(num_point_features)
-
-                    # print(np.fromfile(
-                    #     str(pathlib.Path(root_path) / info["path"]), dtype=np.float32
-                    # ).shape[0])
-                    # s_points = np.fromfile(
-                    #     str(pathlib.Path(root_path) / info["path"]), dtype=np.float32
-                    # ).reshape(-1, num_point_features)
+                    s_points = np.fromfile(
+                        str(pathlib.Path(root_path) / info["path"]), dtype=np.float32
+                    ).reshape(-1, num_point_features)
                     # if not add_rgb_to_points:
                     #     s_points = s_points[:, :4]
                     if "rot_transform" in info:
@@ -228,7 +218,6 @@ class DataBaseSamplerV2:
                     s_points_list.append(s_points)
                     # print(pathlib.Path(info["path"]).stem)
                 except Exception:
-                    print("Error")
                     print(str(pathlib.Path(root_path) / info["path"]))
                     continue
             # gt_bboxes = np.stack([s["bbox"] for s in sampled], axis=0)
@@ -255,13 +244,16 @@ class DataBaseSamplerV2:
                         s_points = s_points[np.logical_not(mask)]
                     s_points_list_new.append(s_points)
                 s_points_list = s_points_list_new
-            ret = {
-                "gt_names": np.array([s["name"] for s in sampled]),
-                "difficulty": np.array([s["difficulty"] for s in sampled]),
-                "gt_boxes": sampled_gt_boxes,
-                "points": np.concatenate(s_points_list, axis=0),
-                "gt_masks": np.ones((num_sampled,), dtype=np.bool_),
-            }
+            try:
+                ret = {
+                    "gt_names": np.array([s["name"] for s in sampled]),
+                    "difficulty": np.array([s["difficulty"] for s in sampled]),
+                    "gt_boxes": sampled_gt_boxes,
+                    "points": np.concatenate(s_points_list, axis=0),
+                    "gt_masks": np.ones((num_sampled,), dtype=np.bool_),
+                }
+            except:
+                return None
             if self._use_group_sampling:
                 ret["group_ids"] = np.array([s["group_id"] for s in sampled])
             else:

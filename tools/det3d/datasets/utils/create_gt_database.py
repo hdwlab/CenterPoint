@@ -55,11 +55,12 @@ def create_groundtruth_database(
 
     root_path = Path(data_path)
 
-    if dataset_class_name == "NUSC": 
+    if dataset_class_name == "NUSC":
         if db_path is None:
             db_path = root_path / f"gt_database_{nsweeps}sweeps_withvelo"
         if dbinfo_path is None:
-            dbinfo_path = root_path / f"dbinfos_train_{nsweeps}sweeps_withvelo.pkl"
+            dbinfo_path = root_path / \
+                f"dbinfos_train_{nsweeps}sweeps_withvelo.pkl"
     else:
         if db_path is None:
             db_path = root_path / "gt_database"
@@ -69,7 +70,6 @@ def create_groundtruth_database(
         point_features = 5
     else:
         raise NotImplementedError()
-
 
     db_path.mkdir(parents=True, exist_ok=True)
 
@@ -83,11 +83,11 @@ def create_groundtruth_database(
         if "image_idx" in sensor_data["metadata"]:
             image_idx = sensor_data["metadata"]["image_idx"]
 
-        if dataset_class_name == "NUSC": 
+        if dataset_class_name == "NUSC":
             points = sensor_data["lidar"]["combined"]
         else:
             points = sensor_data["lidar"]["points"]
-            
+
         annos = sensor_data["lidar"]["annotations"]
         gt_boxes = annos["boxes"]
         names = annos["names"]
@@ -103,7 +103,7 @@ def create_groundtruth_database(
 
         num_obj = gt_boxes.shape[0]
         if num_obj == 0:
-            continue 
+            continue
         point_indices = box_np_ops.points_in_rbbox(points, gt_boxes)
         for i in range(num_obj):
             if (used_classes is None) or names[i] in used_classes:

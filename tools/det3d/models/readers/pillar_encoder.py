@@ -40,11 +40,10 @@ class PFNLayer(nn.Module):
         self.norm = build_norm_layer(self.norm_cfg, self.units)[1]
 
     def forward(self, inputs):
-        inputs = inputs.float()
+
         x = self.linear(inputs)
         torch.backends.cudnn.enabled = False
-        x = self.norm(x.permute(0, 2, 1).contiguous()
-                      ).permute(0, 2, 1).contiguous()
+        x = self.norm(x.permute(0, 2, 1).contiguous()).permute(0, 2, 1).contiguous()
         torch.backends.cudnn.enabled = True
         x = F.relu(x)
 
@@ -174,7 +173,7 @@ class PointPillarsScatter(nn.Module):
         self.nchannels = num_input_features
 
     def forward(self, voxel_features, coords, batch_size, input_shape):
-        print(coords)
+
         self.nx = input_shape[0]
         self.ny = input_shape[1]
 
@@ -208,6 +207,5 @@ class PointPillarsScatter(nn.Module):
         batch_canvas = torch.stack(batch_canvas, 0)
 
         # Undo the column stacking to final 4-dim tensor
-        batch_canvas = batch_canvas.view(
-            batch_size, self.nchannels, self.ny, self.nx)
+        batch_canvas = batch_canvas.view(batch_size, self.nchannels, self.ny, self.nx)
         return batch_canvas

@@ -1,6 +1,5 @@
 from ..registry import DETECTORS
 from .single_stage import SingleStageDetector
-import torch
 
 
 @DETECTORS.register_module
@@ -21,11 +20,8 @@ class VoxelNet(SingleStageDetector):
 
     def extract_feat(self, data):
         input_features = self.reader(data["features"], data["num_voxels"])
-        input_features = input_features.to(torch.double)
-
         x = self.backbone(
-            input_features, data["coors"].double(
-            ), data["batch_size"], data["input_shape"]
+            input_features, data["coors"], data["batch_size"], data["input_shape"]
         )
         if self.with_neck:
             x = self.neck(x)
@@ -75,7 +71,7 @@ class VoxelNet(SingleStageDetector):
         x = self.extract_feat(data)
         preds_dicts = self.bbox_head(x)
 
-        return preds_dicts
+        return preds_dicts 
 
     def pred_result(self, example, preds):
-        return self.bbox_head.predict(example, preds, self.test_cfg)
+        return self.bbox_head.predict(example, preds, self.test_cfg) 

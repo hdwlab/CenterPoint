@@ -31,12 +31,10 @@ def drop_arrays_by_name(gt_names, used_classes):
     inds = np.array(inds, dtype=np.int64)
     return inds
 
-
 def keep_arrays_by_name(gt_names, used_classes):
     inds = [i for i, x in enumerate(gt_names) if x in used_classes]
     inds = np.array(inds, dtype=np.int64)
     return inds
-
 
 @PIPELINES.register_module
 class Preprocess(object):
@@ -51,7 +49,7 @@ class Preprocess(object):
         self.random_crop = cfg.get("random_crop", False)
 
         self.normalize_intensity = cfg.get("normalize_intensity", False)
-
+        
         self.mode = cfg.mode
         if self.mode == "train":
             self.gt_rotation_noise = cfg.gt_rot_noise
@@ -66,8 +64,8 @@ class Preprocess(object):
             if cfg.db_sampler != None:
                 self.db_sampler = build_dbsampler(cfg.db_sampler)
             else:
-                self.db_sampler = None
-
+                self.db_sampler = None 
+                
             self.flip_single = cfg.get("flip_single", False)
             self.npoints = cfg.get("npoints", -1)
             self.random_select = cfg.get("random_select", False)
@@ -78,6 +76,7 @@ class Preprocess(object):
     def __call__(self, res, info):
 
         res["mode"] = self.mode
+
         if res["type"] in ["WaymoDataset"]:
             points = res["lidar"]["points"]
         elif res["type"] in ["NuScenesDataset"]:
@@ -92,8 +91,7 @@ class Preprocess(object):
             }
 
             if "difficulty" not in anno_dict:
-                difficulty = np.zeros(
-                    [anno_dict["boxes"].shape[0]], dtype=np.int32)
+                difficulty = np.zeros([anno_dict["boxes"].shape[0]], dtype=np.int32)
                 gt_dict["difficulty"] = difficulty
             else:
                 gt_dict["difficulty"] = anno_dict["difficulty"]
@@ -107,10 +105,10 @@ class Preprocess(object):
             assert calib is not None and "image" in res
             image_path = res["image"]["image_path"]
             image = (
-                imgio.imread(str(pathlib.Path(root_path) / image_path)).astype(
-                    np.float32
-                )
-                / 255
+                    imgio.imread(str(pathlib.Path(root_path) / image_path)).astype(
+                        np.float32
+                    )
+                    / 255
             )
             points_rgb = box_np_ops.add_rgb_to_points(
                 points, image, calib["rect"], calib["Trv2c"], calib["P2"]
@@ -179,7 +177,7 @@ class Preprocess(object):
                     self.random_crop,
                     gt_group_ids=None,
                     calib=calib,
-                    road_planes=None  # res["lidar"]["ground_plane"]
+                    road_planes=None # res["lidar"]["ground_plane"]
                 )
 
                 if sampled_dict is not None:
@@ -198,8 +196,7 @@ class Preprocess(object):
                     )
 
                     if self.remove_points_after_sample:
-                        masks = box_np_ops.points_in_rbbox(
-                            points, sampled_gt_boxes)
+                        masks = box_np_ops.points_in_rbbox(points, sampled_gt_boxes)
                         points = points[np.logical_not(masks.any(-1))]
 
                     points = np.concatenate([sampled_points, points], axis=0)
@@ -226,16 +223,13 @@ class Preprocess(object):
 
             if self.kitti_double:
                 assert False, "No more KITTI"
-                gt_dict["gt_boxes"], points = prep.random_flip_both(
-                    gt_dict["gt_boxes"], points, flip_coor=70.4/2)
+                gt_dict["gt_boxes"], points = prep.random_flip_both(gt_dict["gt_boxes"], points, flip_coor=70.4/2)
             elif self.flip_single or iskitti:
                 assert False, "nuscenes double flip is better"
-                gt_dict["gt_boxes"], points = prep.random_flip(
-                    gt_dict["gt_boxes"], points)
+                gt_dict["gt_boxes"], points = prep.random_flip(gt_dict["gt_boxes"], points)
             else:
-                gt_dict["gt_boxes"], points = prep.random_flip_both(
-                    gt_dict["gt_boxes"], points)
-
+                gt_dict["gt_boxes"], points = prep.random_flip_both(gt_dict["gt_boxes"], points)
+            
             gt_dict["gt_boxes"], points = prep.global_rotation(
                 gt_dict["gt_boxes"], points, rotation=self.global_rotation_noise
             )
@@ -321,8 +315,7 @@ class Voxelization(object):
         if res["mode"] == "train":
             gt_dict = res["lidar"]["annotations"]
             bv_range = pc_range[[0, 1, 3, 4]]
-            mask = prep.filter_gt_box_outside_range(
-                gt_dict["gt_boxes"], bv_range)
+            mask = prep.filter_gt_box_outside_range(gt_dict["gt_boxes"], bv_range)
             _dict_select(gt_dict, mask)
 
             res["lidar"]["annotations"] = gt_dict
@@ -387,7 +380,7 @@ class Voxelization(object):
                 shape=grid_size,
                 range=pc_range,
                 size=voxel_size
-            )
+            )            
 
         return res, info
 
@@ -419,8 +412,7 @@ class AssignTarget(object):
         for task in tasks:
             target_assigner = TargetAssigner(
                 box_coder=box_coder,
-                anchor_generators=anchor_generators[flag: flag +
-                                                    task.num_class],
+                anchor_generators=anchor_generators[flag: flag + task.num_class],
                 region_similarity_calculator=similarity_calc,
                 positive_fraction=positive_fraction,
                 sample_size=target_assigner_config.sample_size,
@@ -451,8 +443,7 @@ class AssignTarget(object):
             t["anchors"].reshape([-1, t["anchors"].shape[-1]]) for t in anchors_by_task
         ]
         matched_by_task = [t["matched_thresholds"] for t in anchors_by_task]
-        unmatched_by_task = [t["unmatched_thresholds"]
-                             for t in anchors_by_task]
+        unmatched_by_task = [t["unmatched_thresholds"] for t in anchors_by_task]
 
         bv_anchors_by_task = [
             box_np_ops.rbbox2d_to_near_bbox(anchors[:, [0, 1, 3, 4, -1]])
@@ -476,8 +467,7 @@ class AssignTarget(object):
                 task_masks.append(
                     [
                         np.where(
-                            gt_dict["gt_classes"] == class_name.index(
-                                i) + 1 + flag
+                            gt_dict["gt_classes"] == class_name.index(i) + 1 + flag
                         )
                         for i in class_name
                     ]
@@ -591,6 +581,7 @@ class AssignLabel(object):
         max_objs = self._max_objs * self.dense_reg
         class_names_by_task = [t.class_names for t in self.tasks]
 
+
         dxy = [(0, 0)]
 
         # Calculate output featuremap size
@@ -612,8 +603,7 @@ class AssignLabel(object):
                 task_masks.append(
                     [
                         np.where(
-                            gt_dict["gt_classes"] == class_name.index(
-                                i) + 1 + flag
+                            gt_dict["gt_classes"] == class_name.index(i) + 1 + flag
                         )
                         for i in class_name
                     ]
@@ -671,36 +661,32 @@ class AssignLabel(object):
                 cat = np.zeros((max_objs), dtype=np.int64)
                 direction = np.zeros((max_objs), dtype=np.int64)
 
-                num_objs = min(gt_dict['gt_boxes'][idx].shape[0], max_objs)
+                num_objs = min(gt_dict['gt_boxes'][idx].shape[0], max_objs)  
 
                 for k in range(num_objs):
                     cls_id = gt_dict['gt_classes'][idx][k] - 1
 
                     w, l, h = gt_dict['gt_boxes'][idx][k][3], gt_dict['gt_boxes'][idx][k][4], \
-                        gt_dict['gt_boxes'][idx][k][5]
-                    w, l = w / \
-                        voxel_size[0] / self.out_size_factor, l / \
-                        voxel_size[1] / self.out_size_factor
+                              gt_dict['gt_boxes'][idx][k][5]
+                    w, l = w / voxel_size[0] / self.out_size_factor, l / voxel_size[1] / self.out_size_factor
                     if w > 0 and l > 0:
-                        radius = gaussian_radius(
-                            (l, w), min_overlap=self.gaussian_overlap)
+                        radius = gaussian_radius((l, w), min_overlap=self.gaussian_overlap)
                         radius = max(self._min_radius, int(radius))
 
-                        # be really careful for the coordinate system of your box annotation.
+                        # be really careful for the coordinate system of your box annotation. 
                         x, y, z = gt_dict['gt_boxes'][idx][k][0], gt_dict['gt_boxes'][idx][k][1], \
-                            gt_dict['gt_boxes'][idx][k][2]
+                                  gt_dict['gt_boxes'][idx][k][2]
 
                         coor_x, coor_y = (x - pc_range[0]) / voxel_size[0] / self.out_size_factor, \
-                                         (y - pc_range[1]) / \
-                            voxel_size[1] / self.out_size_factor
+                                         (y - pc_range[1]) / voxel_size[1] / self.out_size_factor
 
                         ct = np.array(
-                            [coor_x, coor_y], dtype=np.float32)
+                            [coor_x, coor_y], dtype=np.float32)  
                         ct_int = ct.astype(np.int32)
 
                         # throw out not in range objects to avoid out of array area when creating the heatmap
                         if not (0 <= ct_int[0] < feature_map_size[0] and 0 <= ct_int[1] < feature_map_size[1]):
-                            continue
+                            continue 
 
                         draw_gaussian(hm[cls_id], ct, radius)
 
@@ -710,32 +696,31 @@ class AssignLabel(object):
                         if not (y * feature_map_size[0] + x < feature_map_size[0] * feature_map_size[1]):
                             # a double check, should never happen
                             print(x, y, y * feature_map_size[0] + x)
-                            assert False
+                            assert False 
 
                         cat[new_idx] = cls_id
                         ind[new_idx] = y * feature_map_size[0] + x
                         mask[new_idx] = 1
 
-                        if res['type'] == 'NuScenesDataset':
+                        if res['type'] == 'NuScenesDataset': 
                             vx, vy = gt_dict['gt_boxes'][idx][k][6:8]
                             rot = gt_dict['gt_boxes'][idx][k][8]
                             if not self.no_log:
                                 anno_box[new_idx] = np.concatenate(
                                     (ct - (x, y), z, np.log(gt_dict['gt_boxes'][idx][k][3:6]),
-                                     np.array(vx), np.array(vy), np.sin(rot), np.cos(rot)), axis=None)
+                                    np.array(vx), np.array(vy), np.sin(rot), np.cos(rot)), axis=None)
                             else:
                                 anno_box[new_idx] = np.concatenate(
                                     (ct - (x, y), z, gt_dict['gt_boxes'][idx][k][3:6],
-                                     np.array(vx), np.array(vy), np.sin(rot), np.cos(rot)), axis=None)
+                                    np.array(vx), np.array(vy), np.sin(rot), np.cos(rot)), axis=None)
                         elif res['type'] == 'WaymoDataset':
                             rot = gt_dict['gt_boxes'][idx][k][-1]
                             anno_box[new_idx] = np.concatenate(
                                 (ct - (x, y), z, np.log(gt_dict['gt_boxes'][idx][k][3:6]),
-                                 np.sin(rot), np.cos(rot)), axis=None)
+                                np.sin(rot), np.cos(rot)), axis=None)
 
                         else:
-                            raise NotImplementedError(
-                                "Only Support KITTI and nuScene for Now!")
+                            raise NotImplementedError("Only Support KITTI and nuScene for Now!")
 
                 hms.append(hm)
                 anno_boxs.append(anno_box)
@@ -743,11 +728,11 @@ class AssignLabel(object):
                 inds.append(ind)
                 cats.append(cat)
 
-            example.update({'hm': hms, 'anno_box': anno_boxs,
-                            'ind': inds, 'mask': masks, 'cat': cats})
+            example.update({'hm': hms, 'anno_box': anno_boxs, 'ind': inds, 'mask': masks, 'cat': cats})
         else:
             pass
 
         res["lidar"]["targets"] = example
 
         return res, info
+

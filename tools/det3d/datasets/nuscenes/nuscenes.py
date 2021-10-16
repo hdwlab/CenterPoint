@@ -35,7 +35,7 @@ class NuScenesDataset(PointCloudDataset):
         self,
         info_path,
         root_path,
-        nsweeps=0, # here set to zero to catch unset nsweep
+        nsweeps=0,  # here set to zero to catch unset nsweep
         cfg=None,
         pipeline=None,
         class_names=None,
@@ -85,11 +85,14 @@ class NuScenesDataset(PointCloudDataset):
                         _cls_infos[name].append(info)
 
             duplicated_samples = sum([len(v) for _, v in _cls_infos.items()])
-            _cls_dist = {k: len(v) / duplicated_samples for k, v in _cls_infos.items()}
+            _cls_dist = {k: len(v) / duplicated_samples for k,
+                         v in _cls_infos.items()}
 
             self._nusc_infos = []
 
             frac = 1.0 / len(self._class_names)
+            # import pdb
+            # pdb.set_trace()
             ratios = [frac / v for v in _cls_dist.values()]
 
             for cls_infos, ratio in zip(list(_cls_infos.values()), ratios):
@@ -125,7 +128,8 @@ class NuScenesDataset(PointCloudDataset):
     def ground_truth_annotations(self):
         if "gt_boxes" not in self._nusc_infos[0]:
             return None
-        cls_range_map = config_factory(self.eval_version).serialize()['class_range']
+        cls_range_map = config_factory(self.eval_version).serialize()[
+            'class_range']
         gt_annos = []
         for info in self._nusc_infos:
             gt_names = np.array(info["gt_names"])
@@ -213,7 +217,8 @@ class NuScenesDataset(PointCloudDataset):
             "meta": None,
         }
 
-        nusc = NuScenes(version=version, dataroot=str(self._root_path), verbose=True)
+        nusc = NuScenes(version=version, dataroot=str(
+            self._root_path), verbose=True)
 
         mapped_class_names = []
         for n in self._class_names:
@@ -225,7 +230,8 @@ class NuScenesDataset(PointCloudDataset):
         for det in dets:
             annos = []
             boxes = _second_det_to_nusc_box(det)
-            boxes = _lidar_nusc_box_to_global(nusc, boxes, det["metadata"]["token"])
+            boxes = _lidar_nusc_box_to_global(
+                nusc, boxes, det["metadata"]["token"])
             for i, box in enumerate(boxes):
                 name = mapped_class_names[box.label]
                 if np.sqrt(box.velocity[0] ** 2 + box.velocity[1] ** 2) > 0.2:
@@ -316,8 +322,8 @@ class NuScenesDataset(PointCloudDataset):
 
         if res_nusc is not None:
             res = {
-                "results": {"nusc": res_nusc["results"]["nusc"],},
-                "detail": {"eval.nusc": res_nusc["detail"]["nusc"],},
+                "results": {"nusc": res_nusc["results"]["nusc"], },
+                "detail": {"eval.nusc": res_nusc["detail"]["nusc"], },
             }
         else:
             res = None
